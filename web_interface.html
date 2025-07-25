@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio-to-Text Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .upload-section {
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+            background-color: #fafafa;
+        }
+        .upload-section:hover {
+            border-color: #007bff;
+            background-color: #f0f8ff;
+        }
+        .language-selector {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .language-selector label {
+            margin: 0 15px;
+            font-weight: bold;
+        }
+        .upload-btn {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        .upload-btn:hover {
+            background-color: #0056b3;
+        }
+        .upload-btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .results {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            min-height: 100px;
+        }
+        .loading {
+            text-align: center;
+            color: #007bff;
+            font-style: italic;
+        }
+        .error {
+            color: #dc3545;
+            background-color: #f8d7da;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #155724;
+            background-color: #d4edda;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .file-info {
+            background-color: #e3f2fd;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Audio-to-Text Converter</h1>
+        <p style="text-align: center; color: #666;">
+            Upload your audio files and get instant transcriptions in Hindi and English!
+        </p>
+        
+        <div class="upload-section" id="dropZone">
+            <h3>📁 Select or Drop Audio Files Here</h3>
+            <p>Supported formats: WAV, MP3, M4A, FLAC, AAC, OGG</p>
+            <input type="file" id="audioFile" accept=".wav,.mp3,.m4a,.flac,.aac,.ogg" style="display: none;" multiple>
+            <button class="upload-btn" onclick="document.getElementById('audioFile').click()">
+                Choose Files
+            </button>
+        </div>
+
+        <div class="language-selector">
+            <label>
+                <input type="radio" name="language" value="auto" checked> Auto-detect
+            </label>
+            <label>
+                <input type="radio" name="language" value="en-IN"> English
+            </label>
+            <label>
+                <input type="radio" name="language" value="hi-IN"> Hindi
+            </label>
+        </div>
+
+        <div style="text-align: center;">
+            <button class="upload-btn" id="transcribeBtn" onclick="transcribeFiles()" disabled>
+                🎯 Start Transcription
+            </button>
+        </div>
+
+        <div class="results" id="results">
+            <p style="text-align: center; color: #999;">
+                Select audio files to see transcription results here...
+            </p>
+        </div>
+    </div>
+
+    <script>
+        let selectedFiles = [];
+        const API_BASE_URL = 'http://localhost:5000';
+
+        // File input change handler
+        document.getElementById('audioFile').addEventListener('change', function(e) {
+            selectedFiles = Array.from(e.target.files);
+            updateFileDisplay();
+        });
+
+        // Drag and drop handlers
+        const dropZone = document.getElementById('dropZone');
+        
+        dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            dropZone.style.borderColor = '#007bff';
+            dropZone.style.backgroundColor = '#f0f8ff';
+        });
+
+        dropZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            dropZone.style.borderColor = '#ddd';
+            dropZone.style.backgroundColor = '#fafafa';
+        });
+
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            dropZone.style.borderColor = '#ddd';
+            dropZone.style.backgroundColor = '#fafafa';
+            
+            const files = Array.from(e.dataTransfer.files);
+            const audioFiles = files.filter(file => {
+                const ext = file.name.toLowerCase();
+                return ext.includes('.wav') || ext.includes('.mp3') || ext.includes('.m4a') || 
+                       ext.includes('.flac') || ext.includes('.aac') || ext.includes('.ogg');
+            });
+            
+            if (audioFiles.length > 0) {
+                selectedFiles = audioFiles;
+                updateFileDisplay();
+            } else {
+                showError('Please select valid audio files!');
+            }
+        });
+
+        function updateFileDisplay() {
+            const results = document.getElementById('results');
+            const transcribeBtn = document.getElementById('transcribeBtn');
+            
+            if (selectedFiles.length > 0) {
+                let fileList = '<div class="file-info"><h4>Selected Files:</h4>';
+                selectedFiles.forEach((file, index) => {
+                    fileList += `<p>📁 ${file.name} (${formatFileSize(file.size)})</p>`;
+                });
+                fileList += '</div>';
+                
+                results.innerHTML = fileList;
+                transcribeBtn.disabled = false;
+            } else {
+                results.innerHTML = '<p style="text-align: center; color: #999;">Select audio files to see transcription results here...</p>';
+                transcribeBtn.disabled = true;
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function getSelectedLanguage() {
+            const radios = document.getElementsByName('language');
+            for (let radio of radios) {
+                if (radio.checked) {
+                    return radio.value;
+                }
+            }
+            return 'auto';
+        }
+
+        async function transcribeFiles() {
+            const results = document.getElementById('results');
+            const transcribeBtn = document.getElementById('transcribeBtn');
+            const language = getSelectedLanguage();
+
+            transcribeBtn.disabled = true;
+            transcribeBtn.textContent = '🔄 Processing...';
+
+            results.innerHTML = '<div class="loading">🔄 Processing audio files... Please wait...</div>';
+
+            let allResults = '<h3>📝 Transcription Results:</h3>';
+            let successCount = 0;
+
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                allResults += `<div class="file-info"><h4>File ${i + 1}: ${file.name}</h4>`;
+                
+                try {
+                    results.innerHTML = `<div class="loading">🔄 Processing file ${i + 1}/${selectedFiles.length}: ${file.name}...</div>`;
+
+                    const formData = new FormData();
+                    formData.append('audio', file);
+                    formData.append('language', language);
+
+                    const response = await fetch(`${API_BASE_URL}/transcribe`, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok && result.success) {
+                        allResults += `<div class="success">✅ Success: ${result.transcription}</div>`;
+                        successCount++;
+                    } else {
+                        allResults += `<div class="error">❌ Error: ${result.error || 'Unknown error'}</div>`;
+                    }
+                } catch (error) {
+                    allResults += `<div class="error">❌ Network Error: ${error.message}</div>`;
+                }
+                
+                allResults += '</div>';
+            }
+
+            allResults += `<div class="file-info"><h4>📊 Summary: ${successCount}/${selectedFiles.length} files processed successfully</h4></div>`;
+            
+            results.innerHTML = allResults;
+            transcribeBtn.disabled = false;
+            transcribeBtn.textContent = '🎯 Start Transcription';
+        }
+
+        function showError(message) {
+            const results = document.getElementById('results');
+            results.innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        // Check API health on page load
+        window.addEventListener('load', async function() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                if (!response.ok) {
+                    showError('⚠️ API server is not running. Please start the server first.');
+                }
+            } catch (error) {
+                showError('⚠️ Cannot connect to API server. Please make sure the server is running on port 5000.');
+            }
+        });
+    </script>
+</body>
+</html>

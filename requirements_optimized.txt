@@ -1,0 +1,10 @@
+# Audio File to Text Converter Requirements
+# Core speech recognition
+SpeechRecognition>=3.10.0
+
+# Audio processing
+pydub>=0.25.1
+
+# Note: PyAudio removed (not needed for file processing)
+# Note: FFmpeg installation may be required for some audio formats
+# Install FFmpeg separately from: https://ffmpeg.org/

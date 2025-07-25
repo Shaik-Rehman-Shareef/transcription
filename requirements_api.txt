@@ -1,0 +1,19 @@
+# REST API Requirements for Audio-to-Text Converter
+# Core audio processing
+SpeechRecognition==3.10.0
+pydub==0.25.1
+
+# Flask for REST API
+Flask==3.0.0
+Flask-CORS==4.0.0
+Werkzeug==3.0.1
+
+# For secure file handling
+secure-filename==0.1
+
+# Optional: For better production deployment
+gunicorn==21.2.0
+
+# Note: You may also need system dependencies:
+# - FFmpeg (for audio format conversion)
+# - PortAudio (for microphone access, not needed for file API)
